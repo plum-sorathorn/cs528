@@ -8,7 +8,7 @@ from collections import defaultdict
 # Configuration 
 DATA_DIR = "hw2_data"  # Must match the directory in the shell script
 
-LINK_RE = re.compile(r'href\s*=\s*["\'](\d+)\.html["\']', re.IGNORECASE)
+LINK_TEXT = re.compile(r'href\s*=\s*["\'](\d+)\.html["\']', re.IGNORECASE)
 
 class GraphAnalyzer:
     def __init__(self):
@@ -48,7 +48,7 @@ class GraphAnalyzer:
                     content = f.read()
                 
                 # Extract links
-                targets = LINK_RE.findall(content)
+                targets = LINK_TEXT.findall(content)
                 targets = [f"{t}.html" for t in targets]
 
                 # Build Graph
@@ -144,9 +144,7 @@ class GraphAnalyzer:
 
 # Testing Section 
 def run_tests():
-    print("\n========================================")
     print("RUNNING INDEPENDENT VERIFICATION TESTS")
-    print("========================================")
     
     analyzer = GraphAnalyzer()
     analyzer.graph = {'A': ['B', 'C'], 'B': ['C'], 'C': ['A']}
@@ -184,9 +182,7 @@ if __name__ == "__main__":
             
             total_duration = time.time() - total_start
             
-            print("\n" + "="*30)
             print("PERFORMANCE TIMING REPORT")
-            print("="*30)
             print(f"Parsing/Stats Time:   {parse_duration:.2f} s")
             print(f"PageRank Time:        {pr_duration:.2f} s")
             print(f"Total Execution Time: {total_duration:.2f} s")
