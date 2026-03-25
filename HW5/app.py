@@ -98,7 +98,7 @@ def main(path):
     t3 = log_to_database(m, code)
     res, t4 = build_response(content, code)
     
-    print(f"Metrics: File={filename}, GCS={t2:.4f}s, DB={t3:.4f}s")
+    print(f"Metrics: File={filename}, Headers={t1:.4f}s, GCS={t2:.4f}s, DB={t3:.4f}s, Response={t4:.4f}s")
     return res
 
 if __name__ == "__main__":
