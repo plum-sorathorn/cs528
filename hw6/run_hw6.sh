@@ -13,7 +13,9 @@ gcloud sql instances patch $INSTANCE_NAME --activation-policy=ALWAYS --project=$
 echo "-----------------------------------------------"
 echo "Step 2: Provisioning ML VM..."
 
-gsutil rm gs://$BUCKET/hw6_results/predictions.txt || true 
+# In Step 2: Delete both files
+gsutil rm gs://$BUCKET/hw6_results/model1_predictions.txt || true 
+gsutil rm gs://$BUCKET/hw6_results/model2_predictions.txt || true 
 
 gcloud compute instances create $VM_NAME \
     --project=$PROJECT_ID \
@@ -26,14 +28,16 @@ gcloud compute instances create $VM_NAME \
 
 echo "-----------------------------------------------"
 echo "Step 3: Waiting for ML results in GCS..."
-until gsutil ls gs://$BUCKET/hw6_results/predictions.txt >/dev/null 2>&1; do
-  echo "VM is training models and verifying SSL... (checking GCS every 20s)"
+until gsutil ls gs://$BUCKET/hw6_results/model2_predictions.txt >/dev/null 2>&1; do
+  echo "VM is training models... (checking GCS every 20s)"
   sleep 20
 done
 
 echo "-----------------------------------------------"
 echo "Step 4: Displaying Final Results"
-gsutil cat gs://$BUCKET/hw6_results/predictions.txt
+gsutil cat gs://$BUCKET/hw6_results/model1_predictions.txt
+echo ""
+gsutil cat gs://$BUCKET/hw6_results/model2_predictions.txt
 
 echo "-----------------------------------------------"
 echo "Step 5: Cleanup"

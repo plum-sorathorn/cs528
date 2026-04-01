@@ -16,8 +16,7 @@ export DB_PASS=$(curl -H "Metadata-Flavor: Google" http://metadata.google.intern
 # Run the ML pipeline (This will generate /tmp/predictions.txt)
 python3 /tmp/ml_pipeline.py
 
-# NEW: Upload the file using native Bash/gsutil
+# Upload the file using native Bash/gsutil
 echo "Uploading results to GCS..."
-gsutil cp /tmp/predictions.txt gs://cs528-plum-hw2/hw6_results/predictions.txt
-
-touch /var/log/startup_already_done
+gsutil cp /tmp/model1_predictions.txt gs://cs528-plum-hw2/hw6_results/model1_predictions.txt
+gsutil cp /tmp/model2_predictions.txt gs://cs528-plum-hw2/hw6_results/model2_predictions.txt
