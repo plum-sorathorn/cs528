@@ -12,10 +12,17 @@ gcloud sql instances patch $INSTANCE_NAME --activation-policy=ALWAYS --project=$
 
 echo "-----------------------------------------------"
 echo "Step 2: Provisioning ML VM..."
+# Check and delete Model 1 predictions
+if gsutil ls gs://$BUCKET/hw6_results/model1_predictions.txt >/dev/null 2>&1; then
+    echo "Found old model1_predictions.txt. Deleting..."
+    gsutil rm gs://$BUCKET/hw6_results/model1_predictions.txt
+fi
 
-# In Step 2: Delete both files
-gsutil rm gs://$BUCKET/hw6_results/model1_predictions.txt || true 
-gsutil rm gs://$BUCKET/hw6_results/model2_predictions.txt || true 
+# Check and delete Model 2 predictions
+if gsutil ls gs://$BUCKET/hw6_results/model2_predictions.txt >/dev/null 2>&1; then
+    echo "Found old model2_predictions.txt. Deleting..."
+    gsutil rm gs://$BUCKET/hw6_results/model2_predictions.txt
+fi
 
 gcloud compute instances create $VM_NAME \
     --project=$PROJECT_ID \
