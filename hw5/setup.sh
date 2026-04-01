@@ -1,5 +1,5 @@
 #!/bin/bash
-# 1. Configuration - Hardcoded as required by instructions
+# Configuration - Hardcoded as required by instructions
 PROJECT_ID="cs528-485615" 
 REGION="us-central1"
 ZONE="us-central1-a"
