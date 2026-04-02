@@ -15,29 +15,42 @@ def run_3nf_migration(engine):
     print("Starting 3NF Migration...")
     with engine.connect() as conn:
         conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS request_logs_v2;"))
+        conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS ip_profiles;"))
         
-        conn.execute(sqlalchemy.text("CREATE TABLE IF NOT EXISTS ip_locations (ip VARCHAR(50) PRIMARY KEY, country VARCHAR(100) NOT NULL);"))
-        conn.execute(sqlalchemy.text("INSERT IGNORE INTO ip_locations (ip, country) SELECT DISTINCT client_ip, country FROM request_logs;"))
+        # 1. Create the user-level profile table
+        conn.execute(sqlalchemy.text("""
+            CREATE TABLE ip_profiles (
+                ip VARCHAR(50) PRIMARY KEY,
+                country VARCHAR(100) NOT NULL,
+                gender VARCHAR(20),
+                income VARCHAR(50),
+                is_banned BOOLEAN
+            );
+        """))
         
-        # FIXED: Added requested_file and time_of_day to the V2 table
+        # 2. Populate it — one row per unique IP
+        conn.execute(sqlalchemy.text("""
+            INSERT INTO ip_profiles (ip, country, gender, income, is_banned)
+            SELECT client_ip, MAX(country), MAX(gender), MAX(income), MAX(is_banned)
+            FROM request_logs
+            GROUP BY client_ip;
+        """))
+        
+        # 3. Create the normalized request-level table
         conn.execute(sqlalchemy.text("""
             CREATE TABLE request_logs_v2 (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 ip VARCHAR(50),
-                gender VARCHAR(20),
-                age VARCHAR(20),
-                income VARCHAR(50),
-                is_banned BOOLEAN,
                 requested_file VARCHAR(255),
                 time_of_day VARCHAR(50),
-                FOREIGN KEY (ip) REFERENCES ip_locations(ip)
+                FOREIGN KEY (ip) REFERENCES ip_profiles(ip)
             );
         """))
         
-        # Extract the behavioral columns from the root table
+        # 4. Populate with request-level data only
         conn.execute(sqlalchemy.text("""
-            INSERT INTO request_logs_v2 (ip, gender, age, income, is_banned, requested_file, time_of_day) 
-            SELECT client_ip, gender, age, income, is_banned, requested_file, time_of_day FROM request_logs;
+            INSERT INTO request_logs_v2 (ip, requested_file, time_of_day)
+            SELECT client_ip, requested_file, time_of_day FROM request_logs;
         """))
         conn.commit()
     print("Migration Complete.")
@@ -45,11 +58,15 @@ def run_3nf_migration(engine):
 run_3nf_migration(engine)
 
 # --- MACHINE LEARNING LOGIC ---
-df = pd.read_sql("SELECT r.ip, r.gender, r.age, r.income, r.is_banned, r.requested_file, r.time_of_day, l.country FROM request_logs_v2 r JOIN ip_locations l ON r.ip = l.ip", engine)
-df['ip_int'] = df['ip'].apply(lambda x: int(ipaddress.ip_address(x)))
+# Perform a SQL JOIN to re-combine the user profiles with their specific requests
+df = pd.read_sql("""
+    SELECT r.ip, r.requested_file, r.time_of_day, 
+           p.country, p.gender, p.income, p.is_banned 
+    FROM request_logs_v2 r 
+    JOIN ip_profiles p ON r.ip = p.ip
+""", engine)
 
-# Clean Age
-df['age'] = pd.to_numeric(df['age'], errors='coerce').fillna(0)
+df['ip_int'] = df['ip'].apply(lambda x: int(ipaddress.ip_address(x)))
 
 # Use regex to pull the number out of the file string (e.g., '15043.html' -> 15043)
 df['file_id'] = df['requested_file'].str.extract(r'(\d+)').astype(float).fillna(0)
@@ -64,8 +81,8 @@ X1_train, X1_test, y1_train, y1_test = train_test_split(df[['ip_int']], y1, test
 m1 = RandomForestClassifier(n_estimators=10, random_state=42).fit(X1_train, y1_train)
 
 # Model 2 (Demographics & Behavior -> Income)
-# We feed the model our new 'file_id' and 'hour' features
-X2 = pd.get_dummies(df[['age', 'gender', 'country', 'is_banned', 'ip_int', 'file_id', 'hour']], columns=['gender', 'country'])
+# We feed the model our 'file_id' and 'hour' features (Note: 'age' has been completely removed)
+X2 = pd.get_dummies(df[['gender', 'country', 'is_banned', 'ip_int', 'file_id', 'hour']], columns=['gender', 'country'])
 y2 = LabelEncoder().fit_transform(df['income'])
 
 X2_train, X2_test, y2_train, y2_test = train_test_split(X2, y2, test_size=0.2, random_state=42)
@@ -76,7 +93,7 @@ res1 = f"Model 1 Accuracy: {m1.score(X1_test, y1_test):.4f}"
 with open("/tmp/model1_predictions.txt", "w") as f:
     f.write(res1)
 
-res2 = f"Model 2 Accuracy: {m2.score(X2_test, y2_test):.4f}"
+res2 = f"Model 2 Accuracy: {(m2.score(X2_test, y2_test)):.4f}"
 with open("/tmp/model2_predictions.txt", "w") as f:
     f.write(res2)
 print("Results saved to separate files.")
