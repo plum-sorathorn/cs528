@@ -1,0 +1,20 @@
+# local machine
+
+# first, download the files
+gsutil cp -r gs://cs528-plum-hw2/data C:\Users\BigBo\Documents\cs528\data
+
+# run the script
+Measure-Command { python hw7_pipeline.py \
+    --input "gs://cs528-plum-hw2/data/*.html" \
+    --output "local_results" \
+    --runner DirectRunner }
+
+# cloud
+python3 hw7_pipeline.py \
+    --input "gs://cs528-plum-hw2/data/*.html" \
+    --output "gs://cs528-plum-hw2/hw7_results/cloud" \
+    --runner DataflowRunner \
+    --project cs528-485615 \
+    --region us-central1 \
+    --temp_location gs://cs528-plum-hw2/temp \
+    --worker_machine_type n2-standard-2
