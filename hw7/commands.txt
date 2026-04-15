@@ -18,3 +18,18 @@ python3 hw7_pipeline.py \
     --region us-central1 \
     --temp_location gs://cs528-plum-hw2/temp \
     --worker_machine_type n2-standard-2
+
+
+gcloud compute instances create hw8-server-a \
+    --zone=us-central1-a \
+    --machine-type=e2-micro \
+    --tags=http-server \
+    --scopes=https://www.googleapis.com/auth/cloud-platform \
+    --metadata-from-file startup-script=startup-server.sh
+
+gcloud compute instances create hw8-server-b \
+    --zone=us-central1-b \
+    --machine-type=e2-micro \
+    --tags=http-server \
+    --scopes=https://www.googleapis.com/auth/cloud-platform \
+    --metadata-from-file startup-script=startup-server.sh
